@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端测试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-btn { margin: 10px; padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+        .error { background: #ffe6e6; color: #d00; }
+    </style>
+</head>
+<body>
+    <h1>前端API测试</h1>
+    <button class="test-btn" onclick="testSystemInfo()">测试系统信息API</button>
+    <button class="test-btn" onclick="testPerformanceInfo()">测试性能资源API</button>
+    <button class="test-btn" onclick="openMainPage()">打开主页面</button>
+
+    <div id="results"></div>
+
+    <script>
+        function addResult(title, data, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : ''}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            results.appendChild(div);
+        }
+
+        async function testSystemInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/api/system/info');
+                const data = await response.json();
+                addResult('系统信息API测试结果:', data);
+            } catch (error) {
+                addResult('系统信息API测试失败:', error.message, true);
+            }
+        }
+
+        async function testPerformanceInfo() {
+            try {
+                const response = await fetch('http://localhost:3000/api/performance/resources');
+                const data = await response.json();
+                addResult('性能资源API测试结果:', data);
+            } catch (error) {
+                addResult('性能资源API测试失败:', error.message, true);
+            }
+        }
+
+        function openMainPage() {
+            window.open('index.html', '_blank');
+        }
+    </script>
+</body>
+</html>
