@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统信息监控仪表板</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-desktop"></i> 系统信息监控仪表板</h1>
+            <div class="last-update">最后更新: <span id="last-update-time">--:--:--</span></div>
+        </header>
+
+        <div class="dashboard">
+            <!-- CPU信息卡片 -->
+            <div class="card cpu-card">
+                <div class="card-header">
+                    <i class="fas fa-microchip"></i>
+                    <h3>CPU信息</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric">
+                        <span class="label">使用率:</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cpu-usage-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="value" id="cpu-usage">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">频率:</span>
+                        <span class="value" id="cpu-frequency">-- GHz</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">核心数:</span>
+                        <span class="value" id="cpu-cores">--</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">温度:</span>
+                        <span class="value" id="cpu-temp">-- °C</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内存信息卡片 -->
+            <div class="card memory-card">
+                <div class="card-header">
+                    <i class="fas fa-memory"></i>
+                    <h3>内存信息</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric">
+                        <span class="label">使用率:</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="memory-usage-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="value" id="memory-usage">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">已使用:</span>
+                        <span class="value" id="memory-used">-- GB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">可用:</span>
+                        <span class="value" id="memory-available">-- GB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">总量:</span>
+                        <span class="value" id="memory-total">-- GB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 磁盘信息卡片 -->
+            <div class="card disk-card">
+                <div class="card-header">
+                    <i class="fas fa-hdd"></i>
+                    <h3>磁盘信息</h3>
+                </div>
+                <div class="card-content">
+                    <div id="disk-info">
+                        <div class="loading">正在加载磁盘信息...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 网络信息卡片 -->
+            <div class="card network-card">
+                <div class="card-header">
+                    <i class="fas fa-network-wired"></i>
+                    <h3>网络信息</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric">
+                        <span class="label">上传速度:</span>
+                        <span class="value" id="network-upload">-- KB/s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">下载速度:</span>
+                        <span class="value" id="network-download">-- KB/s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">连接数:</span>
+                        <span class="value" id="network-connections">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统信息卡片 -->
+            <div class="card system-card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>系统信息</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric">
+                        <span class="label">启动时间:</span>
+                        <span class="value" id="system-boot-time">--</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">运行时间:</span>
+                        <span class="value" id="system-uptime">--</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">进程数:</span>
+                        <span class="value" id="system-processes">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时图表区域 -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-line"></i> CPU使用率趋势</h3>
+                <canvas id="cpu-chart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-area"></i> 内存使用趋势</h3>
+                <canvas id="memory-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 全局变量
+        let cpuChart = null;
+        let memoryChart = null;
+        let cpuData = Array(20).fill(0); // 预填充20个数据点
+        let memoryData = Array(20).fill(0); // 预填充20个数据点
+        const MAX_DATA_POINTS = 20;
+
+        // 格式化字节大小
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // 格式化时间
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            return `${days}天 ${hours}小时 ${mins}分钟`;
+        }
+
+        // 更新图表数据
+        function updateChartData(chart, newData) {
+            // 限制数据长度
+            if (chart.data.datasets[0].data.length >= MAX_DATA_POINTS) {
+                chart.data.datasets[0].data.shift();
+                chart.data.labels.shift();
+            }
+            chart.data.datasets[0].data.push(newData);
+            chart.data.labels.push(new Date().toLocaleTimeString('zh-CN').slice(0, 8)); // 只显示时分秒
+            chart.update('none');
+        }
+
+        // 初始化图表
+        function initializeCharts() {
+            // 生成时间标签
+            const timeLabels = Array(MAX_DATA_POINTS).fill('').map((_, i) => {
+                const time = new Date();
+                time.setSeconds(time.getSeconds() - (MAX_DATA_POINTS - i - 1) * 3); // 每3秒一个点
+                return time.toLocaleTimeString('zh-CN').slice(0, 8);
+            });
+
+            // CPU使用率图表
+            const cpuCtx = document.getElementById('cpu-chart').getContext('2d');
+            cpuChart = new Chart(cpuCtx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'CPU使用率 (%)',
+                        data: cpuData,
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0 // 禁用动画以提高性能
+                    },
+                    elements: {
+                        point: {
+                            radius: 0 // 隐藏数据点以减少渲染负担
+                        },
+                        line: {
+                            borderWidth: 1 // 减少线条宽度
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 5 // 限制Y轴刻度数量
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6 // 限制X轴刻度数量
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+
+            // 内存使用率图表
+            const memoryCtx = document.getElementById('memory-chart').getContext('2d');
+            memoryChart = new Chart(memoryCtx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: '内存使用率 (%)',
+                        data: memoryData,
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0 // 禁用动画以提高性能
+                    },
+                    elements: {
+                        point: {
+                            radius: 0 // 隐藏数据点以减少渲染负担
+                        },
+                        line: {
+                            borderWidth: 1 // 减少线条宽度
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 5 // 限制Y轴刻度数量
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 获取系统信息
+        async function fetchSystemInfo() {
+            try {
+                const response = await fetch('/api/system-info');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('获取系统信息失败:', error);
+                showError('无法连接到服务器');
+            }
+        }
+
+        // 更新仪表板
+        function updateDashboard(data) {
+            // 更新时间
+            document.getElementById('last-update-time').textContent = 
+                new Date().toLocaleTimeString('zh-CN');
+
+            // 更新CPU信息
+            if (data.cpu) {
+                const cpuUsage = data.cpu.usage || 0;
+                document.getElementById('cpu-usage').textContent = `${cpuUsage}%`;
+                document.getElementById('cpu-usage-bar').style.width = `${cpuUsage}%`;
+                document.getElementById('cpu-frequency').textContent = 
+                    data.cpu.frequency ? `${(data.cpu.frequency / 1000).toFixed(2)} GHz` : '-- GHz';
+                document.getElementById('cpu-cores').textContent = data.cpu.cores || '--';
+                document.getElementById('cpu-temp').textContent = 
+                    data.cpu.temperature ? `${data.cpu.temperature} °C` : '-- °C';
+                
+                // 更新CPU图表
+                updateChartData(cpuChart, cpuUsage);
+            }
+
+            // 更新内存信息
+            if (data.memory) {
+                const memoryUsage = data.memory.usage || 0;
+                document.getElementById('memory-usage').textContent = `${memoryUsage}%`;
+                document.getElementById('memory-usage-bar').style.width = `${memoryUsage}%`;
+                document.getElementById('memory-used').textContent = 
+                    data.memory.used ? formatBytes(data.memory.used) : '--';
+                document.getElementById('memory-available').textContent = 
+                    data.memory.available ? formatBytes(data.memory.available) : '--';
+                document.getElementById('memory-total').textContent = 
+                    data.memory.total ? formatBytes(data.memory.total) : '--';
+                
+                // 更新内存图表
+                updateChartData(memoryChart, memoryUsage);
+            }
+
+            // 更新磁盘信息
+            if (data.disk && Array.isArray(data.disk.partitions)) {
+                const diskInfo = document.getElementById('disk-info');
+                diskInfo.innerHTML = data.disk.partitions.map(partition => `
+                    <div class="disk-partition">
+                        <div class="partition-header">
+                            <span class="partition-name">${partition.device || '未知设备'}</span>
+                            <span class="partition-usage">${partition.usage || 0}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${partition.usage || 0}%"></div>
+                        </div>
+                        <div class="partition-details">
+                            <span>已用: ${partition.used ? formatBytes(partition.used) : '--'}</span>
+                            <span>可用: ${partition.free ? formatBytes(partition.free) : '--'}</span>
+                            <span>总量: ${partition.total ? formatBytes(partition.total) : '--'}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 更新网络信息
+            if (data.network) {
+                document.getElementById('network-upload').textContent = 
+                    data.network.upload ? `${(data.network.upload / 1024).toFixed(1)} KB/s` : '-- KB/s';
+                document.getElementById('network-download').textContent = 
+                    data.network.download ? `${(data.network.download / 1024).toFixed(1)} KB/s` : '-- KB/s';
+                document.getElementById('network-connections').textContent = 
+                    data.network.connections || '--';
+            }
+
+            // 更新系统信息
+            if (data.system) {
+                document.getElementById('system-boot-time').textContent = 
+                    data.system.boot_time ? new Date(data.system.boot_time * 1000).toLocaleString('zh-CN') : '--';
+                document.getElementById('system-uptime').textContent = 
+                    data.system.uptime ? formatUptime(data.system.uptime) : '--';
+                document.getElementById('system-processes').textContent = 
+                    data.system.processes || '--';
+            }
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            // 立即获取一次数据
+            fetchSystemInfo();
+            // 每3秒更新一次数据
+            setInterval(fetchSystemInfo, 3000);
+        });
+    </script>
+</body>
+</html>
