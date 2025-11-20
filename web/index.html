@@ -16,10 +16,13 @@
 
         <div class="dashboard">
             <!-- CPU信息卡片 -->
-            <div class="card cpu-card">
+            <div class="card cpu-card expandable-card">
                 <div class="card-header">
                     <i class="fas fa-microchip"></i>
                     <h3>CPU信息</h3>
+                    <button class="expand-btn" onclick="toggleCardDetails('cpu')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
                 </div>
                 <div class="card-content">
                     <div class="metric">
@@ -42,13 +45,19 @@
                         <span class="value" id="cpu-temp">-- °C</span>
                     </div>
                 </div>
+                <div class="card-details" id="cpu-details" style="display: none;">
+                    <div class="loading">正在加载详细信息...</div>
+                </div>
             </div>
 
             <!-- 内存信息卡片 -->
-            <div class="card memory-card">
+            <div class="card memory-card expandable-card">
                 <div class="card-header">
                     <i class="fas fa-memory"></i>
                     <h3>内存信息</h3>
+                    <button class="expand-btn" onclick="toggleCardDetails('memory')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
                 </div>
                 <div class="card-content">
                     <div class="metric">
@@ -71,26 +80,38 @@
                         <span class="value" id="memory-total">-- GB</span>
                     </div>
                 </div>
+                <div class="card-details" id="memory-details" style="display: none;">
+                    <div class="loading">正在加载详细信息...</div>
+                </div>
             </div>
 
             <!-- 磁盘信息卡片 -->
-            <div class="card disk-card">
+            <div class="card disk-card expandable-card">
                 <div class="card-header">
                     <i class="fas fa-hdd"></i>
                     <h3>磁盘信息</h3>
+                    <button class="expand-btn" onclick="toggleCardDetails('disk')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
                 </div>
                 <div class="card-content">
                     <div id="disk-info">
                         <div class="loading">正在加载磁盘信息...</div>
                     </div>
                 </div>
+                <div class="card-details" id="disk-details" style="display: none;">
+                    <div class="loading">正在加载详细信息...</div>
+                </div>
             </div>
 
             <!-- 网络信息卡片 -->
-            <div class="card network-card">
+            <div class="card network-card expandable-card">
                 <div class="card-header">
                     <i class="fas fa-network-wired"></i>
                     <h3>网络信息</h3>
+                    <button class="expand-btn" onclick="toggleCardDetails('network')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
                 </div>
                 <div class="card-content">
                     <div class="metric">
@@ -106,13 +127,38 @@
                         <span class="value" id="network-connections">--</span>
                     </div>
                 </div>
+                <div class="card-details" id="network-details" style="display: none;">
+                    <div class="loading">正在加载详细信息...</div>
+                </div>
+            </div>
+
+            <!-- GPU信息卡片 -->
+            <div class="card gpu-card expandable-card">
+                <div class="card-header">
+                    <i class="fas fa-gpu"></i>
+                    <h3>GPU信息</h3>
+                    <button class="expand-btn" onclick="toggleCardDetails('gpu')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="card-content">
+                    <div id="gpu-info">
+                        <div class="loading">正在加载GPU信息...</div>
+                    </div>
+                </div>
+                <div class="card-details" id="gpu-details" style="display: none;">
+                    <div class="loading">正在加载详细信息...</div>
+                </div>
             </div>
 
             <!-- 系统信息卡片 -->
-            <div class="card system-card">
+            <div class="card system-card expandable-card">
                 <div class="card-header">
                     <i class="fas fa-info-circle"></i>
                     <h3>系统信息</h3>
+                    <button class="expand-btn" onclick="toggleCardDetails('system')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
                 </div>
                 <div class="card-content">
                     <div class="metric">
@@ -128,6 +174,9 @@
                         <span class="value" id="system-processes">--</span>
                     </div>
                 </div>
+                <div class="card-details" id="system-details" style="display: none;">
+                    <div class="loading">正在加载详细信息...</div>
+                </div>
             </div>
         </div>
 
@@ -141,6 +190,14 @@
                 <h3><i class="fas fa-chart-area"></i> 内存使用趋势</h3>
                 <canvas id="memory-chart" width="400" height="200"></canvas>
             </div>
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-bar"></i> 磁盘IO速度</h3>
+                <canvas id="disk-io-chart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-line"></i> 网络传输速度</h3>
+                <canvas id="network-io-chart" width="400" height="200"></canvas>
+            </div>
         </div>
     </div>
 
@@ -149,8 +206,14 @@
         // 全局变量
         let cpuChart = null;
         let memoryChart = null;
+        let diskIoChart = null;
+        let networkIoChart = null;
         let cpuData = Array(20).fill(0); // 预填充20个数据点
         let memoryData = Array(20).fill(0); // 预填充20个数据点
+        let diskReadData = Array(20).fill(0); // 磁盘读取速度数据
+        let diskWriteData = Array(20).fill(0); // 磁盘写入速度数据
+        let networkUploadData = Array(20).fill(0); // 网络上传速度数据
+        let networkDownloadData = Array(20).fill(0); // 网络下载速度数据
         const MAX_DATA_POINTS = 20;
 
         // 格式化字节大小
@@ -183,6 +246,23 @@
             chart.update('none');
         }
 
+        // 更新多数据集图表数据
+        function updateMultiChartData(chart, newDataArray) {
+            // 限制数据长度
+            if (chart.data.datasets[0].data.length >= MAX_DATA_POINTS) {
+                chart.data.datasets.forEach(dataset => dataset.data.shift());
+                chart.data.labels.shift();
+            }
+
+            // 为每个数据集添加新数据
+            chart.data.datasets.forEach((dataset, index) => {
+                dataset.data.push(newDataArray[index] || 0);
+            });
+
+            chart.data.labels.push(new Date().toLocaleTimeString('zh-CN').slice(0, 8));
+            chart.update('none');
+        }
+
         // 初始化图表
         function initializeCharts() {
             // 生成时间标签
@@ -210,7 +290,8 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2, // 设置宽高比为2:1
                     animation: {
                         duration: 0 // 禁用动画以提高性能
                     },
@@ -272,7 +353,8 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2, // 设置宽高比为2:1
                     animation: {
                         duration: 0 // 禁用动画以提高性能
                     },
@@ -304,6 +386,128 @@
                     plugins: {
                         legend: {
                             display: false
+                        }
+                    }
+                }
+            });
+
+            // 磁盘IO速度图表
+            const diskIoCtx = document.getElementById('disk-io-chart').getContext('2d');
+            diskIoChart = new Chart(diskIoCtx, {
+                type: 'bar',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: '读取速度 (MB/s)',
+                        data: diskReadData,
+                        backgroundColor: 'rgba(52, 152, 219, 0.6)',
+                        borderColor: '#3498db',
+                        borderWidth: 1
+                    }, {
+                        label: '写入速度 (MB/s)',
+                        data: diskWriteData,
+                        backgroundColor: 'rgba(155, 89, 182, 0.6)',
+                        borderColor: '#9b59b6',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    animation: {
+                        duration: 0
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 5
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+
+            // 网络传输速度图表
+            const networkIoCtx = document.getElementById('network-io-chart').getContext('2d');
+            networkIoChart = new Chart(networkIoCtx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: '上传速度 (KB/s)',
+                        data: networkUploadData,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4
+                    }, {
+                        label: '下载速度 (KB/s)',
+                        data: networkDownloadData,
+                        borderColor: '#27ae60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    animation: {
+                        duration: 0
+                    },
+                    elements: {
+                        point: {
+                            radius: 0
+                        },
+                        line: {
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 5
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
                         }
                     }
                 }
@@ -381,27 +585,311 @@
                         </div>
                     </div>
                 `).join('');
+
+                // 更新磁盘IO图表
+                if (data.disk.io) {
+                    const readSpeedMB = (data.disk.io.read_speed || 0) / (1024 * 1024);
+                    const writeSpeedMB = (data.disk.io.write_speed || 0) / (1024 * 1024);
+
+                    // 更新磁盘IO图表数据
+                    updateMultiChartData(diskIoChart, [readSpeedMB, writeSpeedMB]);
+                }
             }
 
             // 更新网络信息
             if (data.network) {
-                document.getElementById('network-upload').textContent = 
-                    data.network.upload ? `${(data.network.upload / 1024).toFixed(1)} KB/s` : '-- KB/s';
-                document.getElementById('network-download').textContent = 
-                    data.network.download ? `${(data.network.download / 1024).toFixed(1)} KB/s` : '-- KB/s';
-                document.getElementById('network-connections').textContent = 
+                const uploadSpeedKB = (data.network.upload || 0) / 1024;
+                const downloadSpeedKB = (data.network.download || 0) / 1024;
+
+                document.getElementById('network-upload').textContent =
+                    data.network.upload ? `${uploadSpeedKB.toFixed(1)} KB/s` : '-- KB/s';
+                document.getElementById('network-download').textContent =
+                    data.network.download ? `${downloadSpeedKB.toFixed(1)} KB/s` : '-- KB/s';
+                document.getElementById('network-connections').textContent =
                     data.network.connections || '--';
+
+                // 更新网络IO图表
+                updateMultiChartData(networkIoChart, [uploadSpeedKB, downloadSpeedKB]);
+            }
+
+            // 更新GPU信息
+            if (data.gpu && Array.isArray(data.gpu.gpus)) {
+                const gpuInfo = document.getElementById('gpu-info');
+                if (data.gpu.gpus.length === 0) {
+                    gpuInfo.innerHTML = '<div class="no-data">未检测到GPU或GPU信息不可用</div>';
+                } else {
+                    gpuInfo.innerHTML = data.gpu.gpus.map(gpu => `
+                        <div class="gpu-device">
+                            <div class="gpu-header">
+                                <span class="gpu-name">${gpu.name || '未知GPU'}</span>
+                                ${gpu.load !== undefined ? `<span class="gpu-load">${gpu.load}%</span>` : ''}
+                            </div>
+                            ${gpu.load !== undefined ? `
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${gpu.load}%"></div>
+                                </div>
+                            ` : ''}
+                            <div class="gpu-details">
+                                ${gpu.memory_used !== undefined && gpu.memory_total !== undefined ?
+                                    `<span>显存: ${(gpu.memory_used / (1024 * 1024)).toFixed(0)} MB / ${(gpu.memory_total / (1024 * 1024 * 1024)).toFixed(1)} GB</span>` : ''}
+                                ${gpu.memory_util !== undefined ?
+                                    `<span>显存使用率: ${gpu.memory_util}%</span>` : ''}
+                                ${gpu.temperature !== undefined ?
+                                    `<span>温度: ${gpu.temperature}°C</span>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
             }
 
             // 更新系统信息
             if (data.system) {
-                document.getElementById('system-boot-time').textContent = 
+                document.getElementById('system-boot-time').textContent =
                     data.system.boot_time ? new Date(data.system.boot_time * 1000).toLocaleString('zh-CN') : '--';
-                document.getElementById('system-uptime').textContent = 
+                document.getElementById('system-uptime').textContent =
                     data.system.uptime ? formatUptime(data.system.uptime) : '--';
-                document.getElementById('system-processes').textContent = 
+                document.getElementById('system-processes').textContent =
                     data.system.processes || '--';
             }
+        }
+
+        // 切换卡片详细信息显示
+        async function toggleCardDetails(cardType) {
+            const detailsDiv = document.getElementById(`${cardType}-details`);
+            const expandBtn = detailsDiv.previousElementSibling.querySelector('.expand-btn i');
+
+            if (detailsDiv.style.display === 'none' || detailsDiv.style.display === '') {
+                // 展开详细信息
+                detailsDiv.style.display = 'block';
+                expandBtn.className = 'fas fa-chevron-up';
+
+                // 如果还没有加载过详细信息，则加载
+                if (detailsDiv.dataset.loaded !== 'true') {
+                    detailsDiv.innerHTML = '<div class="loading">正在加载详细信息...</div>';
+                    try {
+                        const response = await fetch(`/api/${cardType}/detailed`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            detailsDiv.innerHTML = formatDetailedInfo(cardType, data);
+                            detailsDiv.dataset.loaded = 'true';
+                        } else {
+                            detailsDiv.innerHTML = '<div class="error">加载详细信息失败</div>';
+                        }
+                    } catch (error) {
+                        console.error(`加载${cardType}详细信息失败:`, error);
+                        detailsDiv.innerHTML = '<div class="error">加载详细信息失败</div>';
+                    }
+                }
+            } else {
+                // 折叠详细信息
+                detailsDiv.style.display = 'none';
+                expandBtn.className = 'fas fa-chevron-down';
+            }
+        }
+
+        // 格式化详细信息显示
+        function formatDetailedInfo(cardType, data) {
+            switch (cardType) {
+                case 'cpu':
+                    return formatCpuDetails(data);
+                case 'memory':
+                    return formatMemoryDetails(data);
+                case 'disk':
+                    return formatDiskDetails(data);
+                case 'network':
+                    return formatNetworkDetails(data);
+                case 'gpu':
+                    return formatGpuDetails(data);
+                case 'system':
+                    return formatSystemDetails(data);
+                default:
+                    return '<div>暂无详细信息</div>';
+            }
+        }
+
+        // 格式化CPU详细信息
+        function formatCpuDetails(data) {
+            let html = '<h4>CPU详细信息</h4>';
+            html += `<p>物理核心数: ${data.physical_cores || 'N/A'}</p>`;
+            html += `<p>逻辑核心数: ${data.logical_cores || 'N/A'}</p>`;
+
+            if (data.usage_per_core && Array.isArray(data.usage_per_core)) {
+                html += '<h5>各核心使用率:</h5><div class="core-usage">';
+                data.usage_per_core.forEach((usage, index) => {
+                    html += `<div class="core-item">核心${index}: ${usage.toFixed(1)}%</div>`;
+                });
+                html += '</div>';
+            }
+
+            if (data.frequency && Array.isArray(data.frequency)) {
+                html += '<h5>各核心频率:</h5><div class="core-frequency">';
+                data.frequency.forEach((freq, index) => {
+                    if (freq && freq.current) {
+                        html += `<div class="freq-item">核心${index}: ${(freq.current / 1000).toFixed(2)} GHz</div>`;
+                    }
+                });
+                html += '</div>';
+            }
+
+            return html;
+        }
+
+        // 格式化内存详细信息
+        function formatMemoryDetails(data) {
+            let html = '<h4>内存详细信息</h4>';
+
+            if (data.virtual_memory) {
+                const vm = data.virtual_memory;
+                html += '<h5>虚拟内存:</h5>';
+                html += `<p>总量: ${formatBytes(vm.total)}</p>`;
+                html += `<p>已用: ${formatBytes(vm.used)} (${vm.percent}%)</p>`;
+                html += `<p>可用: ${formatBytes(vm.available)}</p>`;
+                html += `<p>空闲: ${formatBytes(vm.free)}</p>`;
+                if (vm.active) html += `<p>活跃: ${formatBytes(vm.active)}</p>`;
+                if (vm.inactive) html += `<p>非活跃: ${formatBytes(vm.inactive)}</p>`;
+                if (vm.buffers) html += `<p>缓冲区: ${formatBytes(vm.buffers)}</p>`;
+                if (vm.cached) html += `<p>缓存: ${formatBytes(vm.cached)}</p>`;
+            }
+
+            if (data.swap_memory) {
+                const swap = data.swap_memory;
+                html += '<h5>交换内存:</h5>';
+                html += `<p>总量: ${formatBytes(swap.total)}</p>`;
+                html += `<p>已用: ${formatBytes(swap.used)} (${swap.percent}%)</p>`;
+                html += `<p>可用: ${formatBytes(swap.free)}</p>`;
+                html += `<p>换入: ${formatBytes(swap.sin)}</p>`;
+                html += `<p>换出: ${formatBytes(swap.sout)}</p>`;
+            }
+
+            return html;
+        }
+
+        // 格式化磁盘详细信息
+        function formatDiskDetails(data) {
+            let html = '<h4>磁盘详细信息</h4>';
+
+            if (data.partitions && Array.isArray(data.partitions)) {
+                html += '<h5>分区信息:</h5>';
+                data.partitions.forEach(partition => {
+                    html += `<div class="partition-info">`;
+                    html += `<p><strong>${partition.device}</strong> -> ${partition.mountpoint}</p>`;
+                    html += `<p>文件系统: ${partition.fstype}</p>`;
+                    html += `<p>选项: ${partition.opts}</p>`;
+                    if (partition.usage) {
+                        const usage = partition.usage;
+                        html += `<p>使用情况: ${formatBytes(usage.used)} / ${formatBytes(usage.total)} (${usage.percent}%)</p>`;
+                    }
+                    html += `</div>`;
+                });
+            }
+
+            if (data.io_stats) {
+                html += '<h5>IO统计信息:</h5>';
+                Object.entries(data.io_stats).forEach(([disk, stats]) => {
+                    html += `<div class="io-stats">`;
+                    html += `<p><strong>${disk}</strong></p>`;
+                    html += `<p>读取: ${formatBytes(stats.read_bytes)} (${stats.read_count} 次)</p>`;
+                    html += `<p>写入: ${formatBytes(stats.write_bytes)} (${stats.write_count} 次)</p>`;
+                    if (stats.read_time) html += `<p>读取时间: ${stats.read_time}ms</p>`;
+                    if (stats.write_time) html += `<p>写入时间: ${stats.write_time}ms</p>`;
+                    if (stats.busy_time) html += `<p>忙碌时间: ${stats.busy_time}ms</p>`;
+                    html += `</div>`;
+                });
+            }
+
+            return html;
+        }
+
+        // 格式化网络详细信息
+        function formatNetworkDetails(data) {
+            let html = '<h4>网络详细信息</h4>';
+
+            if (data.interfaces) {
+                html += '<h5>网络接口:</h5>';
+                Object.entries(data.interfaces).forEach(([name, addrs]) => {
+                    html += `<div class="interface-info">`;
+                    html += `<p><strong>${name}</strong></p>`;
+                    if (Array.isArray(addrs)) {
+                        addrs.forEach(addr => {
+                            if (addr.family === 2) { // IPv4
+                                html += `<p>IPv4: ${addr.address}/${addr.netmask || 'N/A'}</p>`;
+                            } else if (addr.family === 23) { // IPv6
+                                html += `<p>IPv6: ${addr.address}</p>`;
+                            }
+                        });
+                    }
+                    html += `</div>`;
+                });
+            }
+
+            if (data.io_counters) {
+                html += '<h5>IO计数器:</h5>';
+                Object.entries(data.io_counters).forEach(([interface, counters]) => {
+                    html += `<div class="io-counters">`;
+                    html += `<p><strong>${interface}</strong></p>`;
+                    html += `<p>发送: ${formatBytes(counters.bytes_sent)} (${counters.packets_sent} 包)</p>`;
+                    html += `<p>接收: ${formatBytes(counters.bytes_recv)} (${counters.packets_recv} 包)</p>`;
+                    html += `<p>丢弃: 发送${counters.dropin || 0}, 接收${counters.dropout || 0}</p>`;
+                    html += `<p>错误: 发送${counters.errin || 0}, 接收${counters.errout || 0}</p>`;
+                    html += `</div>`;
+                });
+            }
+
+            return html;
+        }
+
+        // 格式化GPU详细信息
+        function formatGpuDetails(data) {
+            let html = '<h4>GPU详细信息</h4>';
+
+            if (data.gpus && Array.isArray(data.gpus)) {
+                data.gpus.forEach((gpu, index) => {
+                    html += `<div class="gpu-detail">`;
+                    html += `<h5>GPU ${index}: ${gpu.name || '未知GPU'}</h5>`;
+                    html += `<p>ID: ${gpu.id || 'N/A'}</p>`;
+                    if (gpu.load !== undefined) html += `<p>使用率: ${gpu.load}%</p>`;
+                    if (gpu.memory_used !== undefined && gpu.memory_total !== undefined) {
+                        html += `<p>显存使用: ${(gpu.memory_used / (1024 * 1024)).toFixed(0)} MB / ${(gpu.memory_total / (1024 * 1024 * 1024)).toFixed(1)} GB</p>`;
+                    }
+                    if (gpu.memory_free !== undefined) {
+                        html += `<p>显存可用: ${(gpu.memory_free / (1024 * 1024)).toFixed(0)} MB</p>`;
+                    }
+                    if (gpu.memory_util !== undefined) html += `<p>显存使用率: ${gpu.memory_util}%</p>`;
+                    if (gpu.temperature !== undefined) html += `<p>温度: ${gpu.temperature}°C</p>`;
+                    html += `</div>`;
+                });
+            } else {
+                html += '<p>未检测到GPU设备</p>';
+            }
+
+            return html;
+        }
+
+        // 格式化系统详细信息
+        function formatSystemDetails(data) {
+            let html = '<h4>系统详细信息</h4>';
+
+            if (data.platform) {
+                html += '<h5>平台信息:</h5>';
+                html += `<p>系统: ${data.platform.system}</p>`;
+                html += `<p>主机名: ${data.platform.node}</p>`;
+                html += `<p>版本: ${data.platform.release}</p>`;
+                html += `<p>详细版本: ${data.platform.version}</p>`;
+                html += `<p>架构: ${data.platform.machine}</p>`;
+                html += `<p>处理器: ${data.platform.processor}</p>`;
+            }
+
+            html += `<p>启动时间: ${new Date(data.boot_time * 1000).toLocaleString('zh-CN')}</p>`;
+            html += `<p>进程数量: ${data.process_count}</p>`;
+
+            if (data.users && Array.isArray(data.users)) {
+                html += '<h5>当前用户:</h5>';
+                data.users.forEach(user => {
+                    html += `<p>${user.name} (${user.terminal || 'N/A'}) - 登录时间: ${new Date(user.started * 1000).toLocaleString('zh-CN')}</p>`;
+                });
+            }
+
+            return html;
         }
 
         // 显示错误信息
