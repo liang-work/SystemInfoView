@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
         # 创建并显示WebView窗口
         webview.create_window('系统信息查看器', 'http://localhost:5000')
-        webview.start()
+        webview.start(icon='web/favicon.ico')
     except KeyboardInterrupt:
         print('\n接收到中断信号，正在退出...')
         os._exit(0)
