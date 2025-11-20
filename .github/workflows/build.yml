@@ -1,0 +1,146 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: '选择要构建的平台（可多选）'
+        required: true
+        default: 'windows-amd64,linux-amd64,linux-arm64'
+        type: choice
+        options:
+        - windows-amd64
+        - linux-amd64
+        - linux-arm64
+        - 'windows-amd64,linux-amd64'
+        - 'windows-amd64,linux-arm64'
+        - 'linux-amd64,linux-arm64'
+        - 'windows-amd64,linux-amd64,linux-arm64'
+      author_name:
+        description: '作者姓名'
+        required: true
+        default: 'SystemInfoView Team'
+        type: string
+      author_email:
+        description: '作者邮箱'
+        required: true
+        default: 'team@systeminfoview.com'
+        type: string
+
+jobs:
+  build-windows:
+    if: contains(github.event.inputs.platforms, 'windows-amd64')
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Create version file
+      run: |
+        echo "VSVersionInfo(" > version_info.txt
+        echo "  ffi=FixedFileInfo(" >> version_info.txt
+        echo "    filevers=(1, 0, 0, 0)," >> version_info.txt
+        echo "    prodvers=(1, 0, 0, 0)," >> version_info.txt
+        echo "    mask=0x3f," >> version_info.txt
+        echo "    flags=0x0," >> version_info.txt
+        echo "    OS=0x40004," >> version_info.txt
+        echo "    fileType=0x1," >> version_info.txt
+        echo "    subtype=0x0," >> version_info.txt
+        echo "    date=(0, 0)" >> version_info.txt
+        echo "  )," >> version_info.txt
+        echo "  kids=[" >> version_info.txt
+        echo "    StringFileInfo(" >> version_info.txt
+        echo "      [" >> version_info.txt
+        echo "        StringTable(" >> version_info.txt
+        echo "          u'080404b0'," >> version_info.txt
+        echo "          [StringStruct(u'CompanyName', u'${{ github.event.inputs.author_name }}')," >> version_info.txt
+        echo "           StringStruct(u'ProductName', u'SystemInfoView')," >> version_info.txt
+        echo "           StringStruct(u'ProductVersion', u'1.0.0')," >> version_info.txt
+        echo "           StringStruct(u'FileDescription', u'System Information Viewer')," >> version_info.txt
+        echo "           StringStruct(u'FileVersion', u'1.0.0')," >> version_info.txt
+        echo "           StringStruct(u'InternalName', u'ShowInfo')," >> version_info.txt
+        echo "           StringStruct(u'LegalCopyright', u'Copyright (C) ${{ github.event.inputs.author_name }}')," >> version_info.txt
+        echo "           StringStruct(u'OriginalFilename', u'ShowInfo.exe')," >> version_info.txt
+        echo "          ]" >> version_info.txt
+        echo "        )" >> version_info.txt
+        echo "      ]" >> version_info.txt
+        echo "    )," >> version_info.txt
+        echo "    VarFileInfo([VarStruct(u'Translation', [2052, 1200])])" >> version_info.txt
+        echo "  ]" >> version_info.txt
+        echo ")" >> version_info.txt
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --icon=web/favicon.ico --version-file=version_info.txt ShowInfo.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SystemInfoView-Windows-amd64
+        path: dist/ShowInfo.exe
+
+  build-linux-amd64:
+    if: contains(github.event.inputs.platforms, 'linux-amd64')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --icon=web/favicon.ico ShowInfo.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SystemInfoView-Linux-amd64
+        path: dist/ShowInfo
+
+  build-linux-arm64:
+    if: contains(github.event.inputs.platforms, 'linux-arm64')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
+    - name: Build in Docker
+      run: |
+        docker buildx build --platform linux/arm64 -f Dockerfile.build -o type=local,dest=. .
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SystemInfoView-Linux-arm64
+        path: ShowInfo
